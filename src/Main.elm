@@ -1,6 +1,7 @@
 module Main exposing (..)
 
-import Browser
+import Browser exposing (Document)
+import Element as E
 import FormatNumber as FN
 import FormatNumber.Locales as FNL
 import Html exposing (Html, table, tbody, td, text, th, thead, tr)
@@ -9,13 +10,12 @@ import Json.Decode as D
 import RemoteData as RD
 
 
-main =
-    Browser.element
-        { init = init
-        , update = update
-        , subscriptions = subscriptions
-        , view = view
-        }
+type alias Flags =
+    {}
+
+
+type alias Model =
+    { stats : RD.WebData (List Stat) }
 
 
 type alias Stat =
@@ -28,15 +28,21 @@ type alias Stat =
     }
 
 
-type alias Model =
-    { stats : RD.WebData (List Stat) }
-
-
 type Msg
     = StatsResponse (RD.WebData (List Stat))
 
 
-init : () -> ( Model, Cmd Msg )
+main : Program Flags Model Msg
+main =
+    Browser.document
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = view
+        }
+
+
+init : Flags -> ( Model, Cmd Msg )
 init _ =
     ( { stats = RD.Loading }, getStats )
 
@@ -71,68 +77,91 @@ update msg model =
             )
 
 
-view : Model -> Html msg
+view : Model -> Document msg
 view model =
-    case model.stats of
-        RD.NotAsked ->
-            text "Initialising."
-
-        RD.Loading ->
-            text "Loading."
-
-        RD.Failure err ->
-            text "Error"
-
-        RD.Success stats ->
-            viewStats stats
+    { title = "Warmaster Stats"
+    , body = [ viewBody model ]
+    }
 
 
-viewStats : List Stat -> Html msg
+viewBody : Model -> Html msg
+viewBody model =
+    E.layout []
+        (case model.stats of
+            RD.NotAsked ->
+                E.text "Initialising."
+
+            RD.Loading ->
+                E.text "Loading."
+
+            RD.Failure err ->
+                E.text "Error"
+
+            RD.Success stats ->
+                viewStats stats
+        )
+
+
+viewStats : List Stat -> E.Element msg
 viewStats stats =
-    table []
-        [ thead []
-            [ th [] [ text "Faction" ]
-            , th [] [ text "Wins" ]
-            , th [] [ text "Losses" ]
-            , th [] [ text "Total" ]
-            , th [] [ text "Win%" ]
-            , th [] [ text "Play%" ]
-            , th [] [ text "Min ELO" ]
-            , th [] [ text "Avg ELO" ]
-            , th [] [ text "Max ELO" ]
-            , th [] [ text "Max - Min ELO" ]
-            ]
-        , tbody [] (List.map (viewStat (List.sum (List.map (\s -> s.wins) stats))) stats)
-        ]
-
-
-viewStat : Int -> Stat -> Html msg
-viewStat totalPlayed stat =
     let
+        totalPlayed =
+            List.sum (List.map (\s -> s.wins) stats)
+
         total =
-            stat.wins + stat.losses
+            \stat -> stat.wins + stat.losses
 
         winPercentage =
-            (toFloat stat.wins / toFloat total) * 100
+            \stat -> toFloat stat.wins / toFloat (total stat) * 100
 
         playPercentage =
-            (toFloat total / toFloat totalPlayed) * 100
-
-        eloDifference =
-            stat.maxElo - stat.minElo
+            \stat -> toFloat (total stat) / toFloat totalPlayed * 100
     in
-    tr []
-        [ td [] [ text stat.faction ]
-        , td [] [ text (String.fromInt stat.wins) ]
-        , td [] [ text (String.fromInt stat.losses) ]
-        , td [] [ text (String.fromInt total) ]
-        , td [] [ text (FN.format FNL.usLocale winPercentage) ]
-        , td [] [ text (FN.format FNL.usLocale playPercentage) ]
-        , td [] [ text (String.fromInt stat.minElo) ]
-        , td [] [ text (String.fromInt stat.avgElo) ]
-        , td [] [ text (String.fromInt stat.maxElo) ]
-        , td [] [ text (String.fromInt eloDifference) ]
-        ]
+    E.table []
+        { data = stats
+        , columns =
+            [ { header = E.text "Faction"
+              , width = E.fill
+              , view = \stat -> E.text stat.faction
+              }
+            , { header = E.text "Wins"
+              , width = E.fill
+              , view = \stat -> E.text (String.fromInt stat.wins)
+              }
+            , { header = E.text "Losses"
+              , width = E.fill
+              , view = \stat -> E.text (String.fromInt stat.losses)
+              }
+            , { header = E.text "Total"
+              , width = E.fill
+              , view = \stat -> E.text (String.fromInt (total stat))
+              }
+            , { header = E.text "Win%"
+              , width = E.fill
+              , view = \stat -> E.text (FN.format FNL.usLocale (winPercentage stat))
+              }
+            , { header = E.text "Play%"
+              , width = E.fill
+              , view = \stat -> E.text (FN.format FNL.usLocale (playPercentage stat))
+              }
+            , { header = E.text "Min ELO"
+              , width = E.fill
+              , view = \stat -> E.text (String.fromInt stat.minElo)
+              }
+            , { header = E.text "Avg ELO"
+              , width = E.fill
+              , view = \stat -> E.text (String.fromInt stat.avgElo)
+              }
+            , { header = E.text "Max ELO"
+              , width = E.fill
+              , view = \stat -> E.text (String.fromInt stat.maxElo)
+              }
+            , { header = E.text "Max - Min ELO"
+              , width = E.fill
+              , view = \stat -> E.text (String.fromInt (stat.maxElo - stat.minElo))
+              }
+            ]
+        }
 
 
 subscriptions : Model -> Sub Msg
