@@ -2,9 +2,12 @@ module Main exposing (..)
 
 import Browser exposing (Document)
 import Element as E
+import Element.Background as EBG
+import Element.Border as EB
+import Element.Font as EF
 import FormatNumber as FN
 import FormatNumber.Locales as FNL
-import Html exposing (Html, table, tbody, td, text, th, thead, tr)
+import Html exposing (Html)
 import Http
 import Json.Decode as D
 import RemoteData as RD
@@ -86,7 +89,7 @@ view model =
 
 viewBody : Model -> Html msg
 viewBody model =
-    E.layout []
+    E.layout [ E.width E.fill, E.height E.fill, E.padding 50 ]
         (case model.stats of
             RD.NotAsked ->
                 E.text "Initialising."
@@ -116,47 +119,59 @@ viewStats stats =
 
         playPercentage =
             \stat -> toFloat (total stat) / toFloat totalPlayed * 100
+
+        headerAttrs =
+            [ EF.bold
+            , EF.color colors.blue
+            , EB.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+            , EB.color colors.lightGrey
+            ]
+
+        colors =
+            { blue = E.rgb255 0x72 0x9F 0xCF
+            , lightGrey = E.rgb255 0xE0 0xE0 0xE0
+            }
     in
-    E.table []
+    E.table [ E.width E.shrink, E.spacing 10 ]
         { data = stats
         , columns =
-            [ { header = E.text "Faction"
+            [ { header = E.el headerAttrs <| E.text "Faction"
               , width = E.fill
               , view = \stat -> E.text stat.faction
               }
-            , { header = E.text "Wins"
+            , { header = E.el headerAttrs <| E.text "Wins"
               , width = E.fill
               , view = \stat -> E.text (String.fromInt stat.wins)
               }
-            , { header = E.text "Losses"
+            , { header = E.el headerAttrs <| E.text "Losses"
               , width = E.fill
               , view = \stat -> E.text (String.fromInt stat.losses)
               }
-            , { header = E.text "Total"
+            , { header = E.el headerAttrs <| E.text "Total"
               , width = E.fill
               , view = \stat -> E.text (String.fromInt (total stat))
               }
-            , { header = E.text "Win%"
+            , { header = E.el headerAttrs <| E.text "Win%"
               , width = E.fill
               , view = \stat -> E.text (FN.format FNL.usLocale (winPercentage stat))
               }
-            , { header = E.text "Play%"
+            , { header = E.el headerAttrs <| E.text "Play%"
               , width = E.fill
               , view = \stat -> E.text (FN.format FNL.usLocale (playPercentage stat))
               }
-            , { header = E.text "Min ELO"
+            , { header = E.el headerAttrs <| E.text "Min ELO"
               , width = E.fill
               , view = \stat -> E.text (String.fromInt stat.minElo)
               }
-            , { header = E.text "Avg ELO"
+            , { header = E.el headerAttrs <| E.text "Avg ELO"
               , width = E.fill
               , view = \stat -> E.text (String.fromInt stat.avgElo)
               }
-            , { header = E.text "Max ELO"
+            , { header = E.el headerAttrs <| E.text "Max ELO"
               , width = E.fill
               , view = \stat -> E.text (String.fromInt stat.maxElo)
               }
-            , { header = E.text "Max - Min ELO"
+            , { header = E.el headerAttrs <| E.text "Max - Min ELO"
               , width = E.fill
               , view = \stat -> E.text (String.fromInt (stat.maxElo - stat.minElo))
               }
